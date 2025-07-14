@@ -37,24 +37,25 @@ def export_study_as_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Pa
         except Exception as e:
             logger.error(f"Skipping failed JPEG fetch for SOP {sop_uid}: {e}")
 
-        if not fetched_files:
-            raise RuntimeError(f"No JPEGS fetched for study {study_uid}. Aborting ZIP creation.")
+    if not fetched_files:
+        raise RuntimeError(f"No JPEGS fetched for study {study_uid}. Aborting ZIP creation.")
         
-        try:
-            with zipfile.ZipFile(zip_path, 'w') as zip_file:
-                for jpeg_file in fetched_files:
-                    zip_file.write(jpeg_file, arcname=jpeg_file.name)
-            logger.info(f"Create ZIP file: {zip_path} with {len(fetched_files)} JPEGs")
+    try:
+        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+            for jpeg_file in fetched_files:
+                zip_file.write(jpeg_file, arcname=jpeg_file.name)
 
-            if DELETE_TEMP_JPEGS:
-                shutil.rmtree(study_temp_dir, ignore_errors=False)
-                logger.info(f"Deleted temporary JPEGs for {study_uid}")
-            else:
-                logger.info(f"Temporary JPEGs retained for {study_uid}")
+        logger.info(f"Create ZIP file: {zip_path} with {len(fetched_files)} JPEGs")
 
-            return zip_path
-        
-        except Exception as e:
-            logger.error(f"Failed to create ZIP for study {study_uid}: {e}")
-            logger.info(f"Retaining temp JPEGs at: {study_temp_dir}")
-            raise
+        if DELETE_TEMP_JPEGS:
+            shutil.rmtree(study_temp_dir, ignore_errors=False)
+            logger.info(f"Deleted temporary JPEGs for {study_uid}")
+        else:
+            logger.info(f"Temporary JPEGs retained for {study_uid}")
+
+        return zip_path
+    
+    except Exception as e:
+        logger.error(f"Failed to create ZIP for study {study_uid}: {e}")
+        logger.info(f"Retaining temp JPEGs at: {study_temp_dir}")
+        raise
