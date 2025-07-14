@@ -14,6 +14,7 @@ scheduler = BackgroundScheduler()
 @app.get("/export/{study_uid}")
 def export_study(study_uid: str):
     try:
+        study_uid = str(study_uid).strip()
         series_instances = get_study_series_and_instances(study_uid)
         if not series_instances:
             raise HTTPException(status_code=404, detail="No instances found for StudyUID")

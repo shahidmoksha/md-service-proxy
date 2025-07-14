@@ -24,7 +24,7 @@ def get_study_date(study_uid: str) -> str:
     
     ds = Dataset()
     ds.QueryRetrieveLevel = "STUDY"
-    ds.StudyInstanceUID = study_uid
+    ds.StudyInstanceUID = str(study_uid).strip()
     ds.StudyDate = ""
 
     study_date = None
@@ -84,13 +84,13 @@ def get_study_series_and_instances(study_uid: str) -> list[dict]:
     """
     Returns list of dicts with keys: series_uid, sop_uid for the given study UID.
     """
-    ae = AE(ae_title=PACS_CONFIG["CALLING_AETITLE"])
+    ae = AE(ae_title=PACS_CONFIG["AETITLE"])
     ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
 
     assoc = ae.associate(
         PACS_CONFIG["HOST"],
         PACS_CONFIG["PORT"],
-        ae_title=PACS_CONFIG["AETITLE"]
+        ae_title=PACS_CONFIG["CALLING_AETITLE"]
     )
 
     if not assoc.is_established:
@@ -98,8 +98,8 @@ def get_study_series_and_instances(study_uid: str) -> list[dict]:
         raise ConnectionError("C-FIND association failed")
     
     ds = Dataset()
-    ds.QueryRetieveLevel = "IMAGE"
-    ds.StudyInstanceUID = study_uid
+    ds.QueryRetrieval = "IMAGE"
+    ds.StudyInstanceUID = str(study_uid).strip()
     ds.SeriesInstanceUID = ""
     ds.SOPInstanceUID = ""
 
