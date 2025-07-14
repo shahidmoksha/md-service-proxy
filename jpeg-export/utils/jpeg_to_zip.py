@@ -3,9 +3,37 @@ import shutil
 from pathlib import Path
 from logger import logger
 from config import TEMP_DIR, CACHE_DIR, DELETE_TEMP_JPEGS
-from utils.dcm4chee_proxy import get_study_date, fetch_jpeg_instance
+from utils.dcm4chee_proxy import get_study_date, fetch_jpeg_instance, get_study_series_and_instances
 
-def export_study_as_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
+def get_zip_path_for_study(study_uid: str) -> Path:
+    """
+    Returns the path for the ZIP file for a given study UID.
+    """
+    study_date = get_study_date(study_uid)
+    zip_filename = f"{study_date}_{study_uid}.zip"
+    return CACHE_DIR / zip_filename
+
+def background_export_zip(study_uid: str):
+    """
+    Background task to export JPEGs for a study UID and create a ZIP file.
+    """
+    try:
+        logger.info(f"[Background Task] Starting export for study UID: {study_uid}")
+        export_study_jpeg_logic(study_uid)
+        logger.infor(f"[Background Task] Completed export for study UID: {study_uid}")
+    except Exception as e:
+        logger.error(f"[Background Task] Export failed for study UID {study_uid}: {e}")
+
+def export_study_jpeg_logic(study_uid: str) -> Path:
+    study_uid = str(study_uid).strip()
+    series_instances = get_study_series_and_instances(study_uid)
+    if not series_instances:
+        raise ValueError(f"No instances found for StudyUID: {study_uid}")
+    
+    zip_path = create_study_jpeg_zip(study_uid, series_instances)
+    return zip_path
+
+def create_study_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
     """
     Fetch JPEGs via WADO for all SOPs and create a ZIP.
     Each dict in series_instances must contain: series_uid, sop_uid

@@ -1,6 +1,7 @@
 from datetime import datetime
 from config import PACS_CONFIG
-from utils.dcm4chee_proxy import get_study_series_and_instances, export_study_as_jpeg_zip
+from utils.dcm4chee_proxy import get_study_series_and_instances
+from utils.jpeg_to_zip import create_study_jpeg_zip
 from logger import logger
 from pydicom.dataset import Dataset
 from pynetdicom import AE
@@ -51,7 +52,7 @@ def precache_studies_by_date(date_str: str):
             try:
                 series_instances = get_study_series_and_instances(study_uid)
                 if series_instances:
-                    export_study_as_jpeg_zip(study_uid, series_instances)
+                    create_study_jpeg_zip(study_uid, series_instances)
             except Exception as e:
                 logger.warning(f"Precache failed for {study_uid}: {e}")
 
