@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+pydicom
+pynetdicom
+tenacity
+apscheduler
+python-dotenv
