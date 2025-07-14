@@ -98,7 +98,7 @@ def get_study_series_and_instances(study_uid: str) -> list[dict]:
         raise ConnectionError("C-FIND association failed")
     
     ds = Dataset()
-    ds.QueryRetrieval = "IMAGE"
+    ds.QueryRetrieveLevel = "IMAGE"
     ds.StudyInstanceUID = str(study_uid).strip()
     ds.SeriesInstanceUID = ""
     ds.SOPInstanceUID = ""
