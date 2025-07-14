@@ -1,3 +1,6 @@
+"""
+Configuration settings for the JPEG export service.
+"""
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -10,7 +13,7 @@ load_dotenv()
 PACS_CONFIG = {
     "HOST": os.getenv("PACS_HOST", "localhost"),
     "AETITLE": os.getenv("PACS_AETITLE", "MOKSHASERVER"),
-    "PORT": int(os.getenv("PACS_PORT", 11112)),
+    "PORT": int(os.getenv("PACS_PORT", "11112")),
     "CALLING_AETITLE": os.getenv("CALLING_AETITLE", "MDPROXY"),
 }
 
@@ -18,7 +21,7 @@ PACS_CONFIG = {
 DICOM_SERVER_BASE_URL = os.getenv("DICOM_SERVER_BASE_URL", "http://localhost:8000/wado")
 
 # Retry settings
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 RETRY_DELAY_SECONDS = int(os.getenv("RETRY_DELAY_SECONDS"))
 
 # Cache directory for ZIP files
@@ -34,11 +37,11 @@ LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cache control settings
-CACHE_EXPIRY_DAYS = int(os.getenv("CACHE_EXPIRY_DAYS", 1))  # Default to 1 day
+CACHE_EXPIRY_DAYS = int(os.getenv("CACHE_EXPIRY_DAYS", "1"))  # Default to 1 day
 CACHE_EXPIRY = timedelta(days=CACHE_EXPIRY_DAYS)  # delete ZIPs after 1 day
 
 # Auto-delete temporary JPEG settings
 DELETE_TEMP_JPEGS = os.getenv("DELETE_TEMP_JPEGS", "true").lower() == "true"
 
 # Precache settings
-PRECACHE_INTERVAL_MINUTES = int(os.getenv("PRECACHE_INTERVAL_MINUTES", 5))
+PRECACHE_INTERVAL_MINUTES = int(os.getenv("PRECACHE_INTERVAL_MINUTES", "5"))

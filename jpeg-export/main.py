@@ -1,5 +1,9 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+"""
+FastAPI application for managing DICOM JPEG ZIP exports.
+"""
+import re
 from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 from config import DELETE_TEMP_JPEGS, PRECACHE_INTERVAL_MINUTES
@@ -7,11 +11,21 @@ from logger import logger
 from utils.jpeg_to_zip import get_zip_path_for_study, export_study_jpeg_logic, background_export_zip
 from utils.cache_cleanup import cleanup_old_cache_files
 from utils.precache import precache_studies_by_date, precache_todays_studies
-import re
 
-app = FastAPI(title="DICOM JPEG ZIP Proxy")
+tags_metadata = [
+    {
+        "name": "Production",
+        "description": "APIs for checking and exporting DICOM JPEG ZIP files.",
+    },
+    {
+        "name": "Maintenance",
+        "description": "APIs for managing pre-cache, cache cleanup etc",
+    }
+]
 
-@app.get("/check/{study_uid}")
+app = FastAPI(title="DICOM JPEG ZIP Proxy", openapi_tags=tags_metadata)
+
+@app.get("/check/{study_uid}", tags=["Production"])
 def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
     """
     Check if a ZIP file exists for the given study UID.
@@ -40,7 +54,7 @@ def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
         logger.error(f"Check/export enqueue failed for {study_uid}: {e}")
         raise HTTPException(status_code=500, detail="Check/export enqueue failed")
 
-@app.get("/export/{study_uid}")
+@app.get("/export/{study_uid}", tags=["Production"])
 def export_study_jpeg(study_uid: str):
     """
     Export JPEGs for the given study UID and return the ZIP file.
@@ -53,7 +67,7 @@ def export_study_jpeg(study_uid: str):
         logger.error(f"Export failed for {study_uid}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.get("/cleanup")
+@app.get("/cleanup", tags=["Maintenance"])
 def trigger_cleanup():
     """
     Trigger manual cleanup of old cache files.
@@ -65,7 +79,7 @@ def trigger_cleanup():
         logger.error(f"Manual cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/precache/{date_str}")
+@app.post("/precache/{date_str}", tags=["Maintenance"])
 def trigger_precache_by_date(date_str: str, background_tasks: BackgroundTasks):
     """
     Trigger precache for studies on a specific date in YYYYMMDD format.
@@ -76,7 +90,7 @@ def trigger_precache_by_date(date_str: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(precache_studies_by_date, date_str)
     return {"status": "Precache job scheduled in the background", "date": date_str}
 
-@app.post("/precache/today")
+@app.post("/precache/today", tags=["Maintenance"])
 def trigger_precache_today(background_tasks: BackgroundTasks):
     """
     Trigger precache for today's studies.

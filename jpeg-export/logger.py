@@ -1,3 +1,6 @@
+"""
+Module with logic to set up logging for the JPEG export service.
+"""
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
