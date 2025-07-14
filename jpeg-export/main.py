@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from apscheduler.schedulers import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
-from config import DELETE_TEMP_JPEGS
+from config import DELETE_TEMP_JPEGS, PRECACHE_INTERVAL_MINUTES
 from logger import logger
 from utils.jpeg_to_zip import export_study_as_jpeg_zip
 from utils.cache_cleanup import cleanup_old_cache_files
@@ -79,7 +79,7 @@ def precache_todays_studies():
         logger.error(f"Precache job failed: {e}")
 
 # Schedule periodic jobs
-scheduler.add_job(precache_todays_studies, trigger='cron', minutes=JPE)
+scheduler.add_job(precache_todays_studies, trigger='cron', minute=PRECACHE_INTERVAL_MINUTES)
 scheduler.add_job(cleanup_old_cache_files, trigger='cron', hour=2, minute=0)
 scheduler.start()
 

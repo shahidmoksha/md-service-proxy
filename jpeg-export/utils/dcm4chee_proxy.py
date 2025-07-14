@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from pydicom.dataset import Dataset
 from pynetdicom import AE
 from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind
-from config import PACS_CONFIG, TEMP_DIR, DICOM_SERVER_BASE_URL, MAX_RETRIES, RETRY_DELAY
+from config import PACS_CONFIG, TEMP_DIR, DICOM_SERVER_BASE_URL, MAX_RETRIES, RETRY_DELAY_SECONDS
 from logger import logger
 
 def get_study_date(study_uid: str) -> str:
@@ -75,7 +75,7 @@ def fetch_jpeg_instance(study_uid: str, series_uid: str, sop_uid: str) -> Path:
                 logger.warning(f"JPEG fetch failed ({response.status_code}) for {sop_uid}")
         except Exception as e:
             logger.warning(f"Attempt {attempt} failed to fetch JPEG for {sop_uid}: {e}")
-        time.sleep(RETRY_DELAY)
+        time.sleep(RETRY_DELAY_SECONDS)
     
     logger.error(f"JPEG fetch failed after {MAX_RETRIES} attempts: {url}")
     raise Exception (f"JPEG fetch failed after {MAX_RETRIES} attempts: {url}")

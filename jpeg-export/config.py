@@ -1,31 +1,44 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
-# Configuration for JPEG export settings
+# Load environment variables from .env file
+load_dotenv()
 
 # DICOM Server settings
 PACS_CONFIG = {
-    "AETITLE": "MOKSHASERVER",
-    "HOST": "localhost",
-    "PORT": 11112,
-    "CALLING_AETITLE": "MDPROXY",
+    "HOST": os.getenv("PACS_HOST", "localhost"),
+    "AETITLE": os.getenv("PACS_AETITLE", "MOKSHASERVER"),
+    "PORT": int(os.getenv("PACS_PORT", 11112)),
+    "CALLING_AETITLE": os.getenv("CALLING_AETITLE", "MDPROXY"),
 }
 
 # WADO-URI endpoint settings
-DICOM_SERVER_BASE_URL = "http://localhost:8000/dicom-wado"
-MAX_RETRIES = 3 # Number of retries for network requests
-RETRY_DELAY = 5  # Delay in seconds between retries
+DICOM_SERVER_BASE_URL = os.getenv("DICOM_SERVER_BASE_URL", "http://localhost:8000/wado")
 
-# Local paths for ZIP and JPEG storage
-CACHE_DIR = Path(os.getenv("JPEG_EXPORT_CACHE_DIR", "cache"))
-TEMP_DIR = Path(os.getenv("JPEG_EXPORT_TEMP_DIR", "temp"))
-CACHE_DIR.mkdir(exist_ok=True)
-TEMP_DIR.mkdir(exist_ok=True)
+# Retry settings
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+RETRY_DELAY_SECONDS = int(os.getenv("RETRY_DELAY_SECONDS"))
+
+# Cache directory for ZIP files
+CACHE_DIR = Path(os.getenv("JPEG_ZIP_CACHE_DIR", "cache"))
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Temporary directory for JPEGs
+TEMP_DIR = Path(os.getenv("JPEG_TEMP_DIR", "temp"))
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+# Directory for log files
+LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cache control settings
-CACHE_EXPIRY = timedelta(days=1)  # delete ZIPs after 1 day
-DELETE_TEMP_JPEGS = os.getenv("JPEG_EXPORT_DELETE_TEMP_JPEGS", "true").lower() == "true"
+CACHE_EXPIRY_DAYS = int(os.getenv("CACHE_EXPIRY_DAYS", 1))  # Default to 1 day
+CACHE_EXPIRY = timedelta(days=CACHE_EXPIRY_DAYS)  # delete ZIPs after 1 day
+
+# Auto-delete temporary JPEG settings
+DELETE_TEMP_JPEGS = os.getenv("DELETE_TEMP_JPEGS", "true").lower() == "true"
 
 # Precache settings
-PRECACHE_INTERVAL_MINUTES = int(os.getenv("JPEG_EXPORT_PRECACHE_INTERVAL_MINUTES", 15))  # Default to 15 minutes
+PRECACHE_INTERVAL_MINUTES = int(os.getenv("PRECACHE_INTERVAL_MINUTES", 5))

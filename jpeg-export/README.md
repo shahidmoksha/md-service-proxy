@@ -15,7 +15,19 @@ A FastAPI-based microservice to fetch JPEG images of studies from a dcm4chee-2.x
 - Python 3.9+
 - dcm4chee-2.x server accessible over DICOM & WADO-URI
 
-Install dependencies:
+## Development Setup
 
+### On Windows:
 ```bash
-pip install -r requirements.txt
+# Create virtual environment
+> python -m venv .venv 
+
+# Start virtual environment
+> .\.venv\Scripts\activate 
+
+# Stop virtual environment
+> deactivate 
+
+# Install dependencies
+> pip install -r requirements.txt
+```
