@@ -4,8 +4,8 @@ FastAPI application for managing DICOM JPEG ZIP exports.
 import re
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
 from config import DELETE_TEMP_JPEGS, PRECACHE_INTERVAL_MINUTES
 from logger import logger
 from utils.jpeg_to_zip import get_zip_path_for_study, export_study_jpeg_logic, background_export_zip
@@ -24,6 +24,13 @@ tags_metadata = [
 ]
 
 app = FastAPI(title="DICOM JPEG ZIP Proxy", openapi_tags=tags_metadata)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/check/{study_uid}", tags=["Production"])
 def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
@@ -34,25 +41,26 @@ def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
     try:
         study_uid = str(study_uid).strip()
         zip_path = get_zip_path_for_study(study_uid)
-        
+
         if zip_path.exists():
             return {
                 "status" : "success",
                 "msg" : "ZIP file is ready for download",
             }
-        
+
         # If ZIP does not exist, trigger export in the background
         background_tasks.add_task(background_export_zip, study_uid)
-        logger.info(f"Queued background export for study UID: {study_uid}")
+        logger.info("Queued background export for study UID: %s", study_uid)
 
         return {
             "status": "failure",
             "msg": "ZIP file not found, export job scheduled in the background",
         }
-        
+
     except Exception as e:
-        logger.error(f"Check/export enqueue failed for {study_uid}: {e}")
-        raise HTTPException(status_code=500, detail="Check/export enqueue failed")
+        logger.error("Check/export enqueue failed for %s: %s", study_uid, e)
+        raise HTTPException(status_code=500, detail="Check/export enqueue failed") from e
+
 
 @app.get("/export/{study_uid}", tags=["Production"])
 def export_study_jpeg(study_uid: str):
@@ -64,9 +72,10 @@ def export_study_jpeg(study_uid: str):
         zip_path = export_study_jpeg_logic(study_uid)
         return FileResponse(path=zip_path, filename=zip_path.name, media_type="application/zip")
     except Exception as e:
-        logger.error(f"Export failed for {study_uid}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        logger.error("Export failed for %s: %s", study_uid, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @app.get("/cleanup", tags=["Maintenance"])
 def trigger_cleanup():
     """
@@ -76,8 +85,9 @@ def trigger_cleanup():
         cleanup_old_cache_files()
         return {"message": "Cache cleanup triggered"}
     except Exception as e:
-        logger.error(f"Manual cleanup failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Manual cleanup failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/precache/{date_str}", tags=["Maintenance"])
 def trigger_precache_by_date(date_str: str, background_tasks: BackgroundTasks):
@@ -86,9 +96,10 @@ def trigger_precache_by_date(date_str: str, background_tasks: BackgroundTasks):
     """
     if not re.fullmatch(r"^\d{8}$", date_str):
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYYMMDD.")
-    
+
     background_tasks.add_task(precache_studies_by_date, date_str)
     return {"status": "Precache job scheduled in the background", "date": date_str}
+
 
 @app.post("/precache/today", tags=["Maintenance"])
 def trigger_precache_today(background_tasks: BackgroundTasks):
@@ -97,6 +108,7 @@ def trigger_precache_today(background_tasks: BackgroundTasks):
     """
     background_tasks.add_task(precache_todays_studies)
     return {"status": "Precache job for Today scheduled in the background"}
+
 
 # Schedule periodic jobs
 scheduler = BackgroundScheduler()
