@@ -94,7 +94,7 @@ def handle_store(event):
         ds.remove_private_tags()
 
         filepath = Path("cleaned") / f"{ds.SOPInstanceUID}.dcm"
-        ds.save_as(filepath, write_like_original=False)
+        ds.save_as(filepath, enforce_standard=True)
         forward_queue.put(filepath)
         return 0x0000
     except Exception:
