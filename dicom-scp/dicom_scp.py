@@ -137,5 +137,5 @@ monitor_thread.start()
 handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE(ae_title=AE_TITLE)
 ae.supported_contexts = StoragePresentationContexts
-print("Starting SCP on port %d, AE Title: %s", PORT, AE_TITLE)
+print("Starting SCP on port {%d}, AE Title: {%s}", PORT, AE_TITLE)
 ae.start_server(("0.0.0.0", PORT), block=True, evt_handlers=handlers)
