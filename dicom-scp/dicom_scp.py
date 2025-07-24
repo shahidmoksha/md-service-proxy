@@ -22,6 +22,7 @@ TARGET_HOST = os.getenv("TARGET_HOST", "127.0.0.1")
 TARGET_PORT = int(os.getenv("TARGET_PORT", "11112"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 RETRY_DELAY = int(os.getenv("RETRY_DELAY", "5"))
+LOG_DELAY = int(os.getenv("LOG_DELAY", "60"))
 NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4"))
 
 # Configure logging
@@ -44,9 +45,9 @@ stop_event = threading.Event()
 def forward_worker(worker_id):
     while not stop_event.is_set():
         try:
-            file_path = forward_queue.get(timeout=2)
+            file_path, calling_aet = forward_queue.get(timeout=2)
             logging.info("Worker {%s}] Processing file: {%s}", worker_id, file_path)
-            success = forward_to_target(file_path)
+            success = forward_to_target(file_path, calling_aet)
             if success:
                 os.remove(file_path)
                 logging.info(
@@ -64,11 +65,11 @@ def forward_worker(worker_id):
 
 
 # Function to forward DICOM file to target AE
-def forward_to_target(file_path):
+def forward_to_target(file_path, calling_aet):
     for attempt in range(MAX_RETRIES):
-        ae = AE()
-        ae.requested_contexts = StoragePresentationContexts
-        assoc = ae.associate(TARGET_HOST, TARGET_PORT, ae_title=TARGET_AE)
+        tae = AE(ae_title=calling_aet) # Set custom Calling AET
+        tae.requested_contexts = StoragePresentationContexts
+        assoc = tae.associate(TARGET_HOST, TARGET_PORT, ae_title=TARGET_AE)
         if assoc.is_established:
             try:
                 ds = dcmread(file_path)
@@ -95,7 +96,10 @@ def handle_store(event):
 
         filepath = Path("cleaned") / f"{ds.SOPInstanceUID}.dcm"
         ds.save_as(filepath, enforce_standard=True)
-        forward_queue.put(filepath)
+
+        calling_aet = event.assoc.requestor.ae_title
+        forward_queue.put((filepath, calling_aet))
+
         return 0x0000
     except Exception:
         logging.exception("C-STORE failure, quarantining file")
@@ -108,9 +112,13 @@ def handle_store(event):
 
 # Queue monitor
 def queue_monitor():
+    idle_queue_check = 0
     while not stop_event.is_set():
-        if forward_queue.qsize() > 0:
+        if forward_queue.qsize() == 0:
+            idle_queue_check += 1
+        if forward_queue.qsize() > 0 or idle_queue_check >= LOG_DELAY:
             logging.info("[Monitor] Queue size: {%d}", forward_queue.qsize())
+            idle_queue_check = 0
         sleep(10)
 
 # Gracefule shutdown
