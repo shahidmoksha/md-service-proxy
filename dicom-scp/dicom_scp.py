@@ -95,7 +95,7 @@ def handle_store(event):
         ds.remove_private_tags()
 
         filepath = Path("cleaned") / f"{ds.SOPInstanceUID}.dcm"
-        ds.save_as(filepath, enforce_standard=True)
+        ds.save_as(filepath, write_like_original=False)
 
         calling_aet = event.assoc.requestor.ae_title
         forward_queue.put((filepath, calling_aet))
