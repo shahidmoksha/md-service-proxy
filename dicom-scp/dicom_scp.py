@@ -104,7 +104,7 @@ def handle_store(event):
     except Exception:
         logging.exception("C-STORE failure, quarantining file")
         bad_path = (
-            Path("quarantine") / f"bad_{ds.SOPInstanceUID}_{event.context_id}.dcm"
+            Path("quarantine") / f"bad_{ds.SOPInstanceUID}.dcm"
         )
         with open(bad_path, "wb") as f:
             f.write(event.request.DataSet)
