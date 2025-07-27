@@ -29,13 +29,13 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
     line_spacing = font_size + math.ceil(font_size * 0.25)
 
     try:
-        font = ImageFont.truetype("arial.ttf", font_size)
+        font = ImageFont.truetype("DejaVuSans.ttf", font_size)
     except Exception as e:
-        logger.warning("Arial font not found! %s", e)
+        logger.warning("DejaVuSans font not found! %s", e)
         try:
-            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+            font = ImageFont.truetype("arial.ttf", font_size)
         except Exception as ex:
-            logger.warning("DejaVuSans font not found! %s", ex)
+            logger.warning("Arial font not found! %s", ex)
             font = ImageFont.load_default()
 
     # Text color and shadow
