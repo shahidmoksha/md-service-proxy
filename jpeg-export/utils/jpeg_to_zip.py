@@ -1,12 +1,20 @@
 """
 Module with logic to export DICOM JPEGs as ZIP files.
 """
+
 import zipfile
 import shutil
 from pathlib import Path
 from logger import logger
 from config import TEMP_DIR, CACHE_DIR, DELETE_TEMP_JPEGS
-from utils.dcm4chee_proxy import get_study_date, fetch_jpeg_instance, get_study_series_and_instances
+from utils.dcm4chee_proxy import (
+    get_study_date,
+    fetch_jpeg_instance,
+    get_study_series_and_instances,
+    get_instance_metadata,
+)
+from utils.image_utils import burn_metadata_on_jpeg
+
 
 def get_zip_path_for_study(study_uid: str) -> Path:
     """
@@ -15,6 +23,7 @@ def get_zip_path_for_study(study_uid: str) -> Path:
     study_date = get_study_date(study_uid)
     zip_filename = f"{study_date}_{study_uid}.zip"
     return CACHE_DIR / zip_filename
+
 
 def background_export_zip(study_uid: str):
     """
@@ -25,9 +34,17 @@ def background_export_zip(study_uid: str):
         export_study_jpeg_logic(study_uid)
         logger.info("[Background Task] Completed export for study UID: %s", study_uid)
     except Exception as e:
-        logger.error("[Background Task] Export failed for study UID %s: %s", study_uid, e)
+        logger.error(
+            "[Background Task] Export failed for study UID %s: %s", study_uid, e
+        )
+
 
 def export_study_jpeg_logic(study_uid: str) -> Path:
+    """
+    Fetch instances for all series of a study.
+    Create the ZIP file.
+    Returns path to the ZIP file.
+    """
     study_uid = str(study_uid).strip()
     series_instances = get_study_series_and_instances(study_uid)
     if not series_instances:
@@ -35,6 +52,7 @@ def export_study_jpeg_logic(study_uid: str) -> Path:
 
     zip_path = create_study_jpeg_zip(study_uid, series_instances)
     return zip_path
+
 
 def create_study_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
     """
@@ -66,15 +84,20 @@ def create_study_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
         sop_uid = item["sop_uid"]
         try:
             jpeg_path = fetch_jpeg_instance(study_uid, series_uid, sop_uid)
+            metadata = get_instance_metadata(study_uid, series_uid, sop_uid)
+            burn_metadata_on_jpeg(jpeg_path, metadata)
+
             fetched_files.append(jpeg_path)
         except Exception as e:
             logger.error("Skipping failed JPEG fetch for SOP %s: %s", sop_uid, e)
 
     if not fetched_files:
-        raise RuntimeError(f"No JPEGS fetched for study {study_uid}. Aborting ZIP creation.")
+        raise RuntimeError(
+            f"No JPEGS fetched for study {study_uid}. Aborting ZIP creation."
+        )
 
     try:
-        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+        with zipfile.ZipFile(zip_path, "w") as zip_file:
             for jpeg_file in fetched_files:
                 zip_file.write(jpeg_file, arcname=jpeg_file.name)
 

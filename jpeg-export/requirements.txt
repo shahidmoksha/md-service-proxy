@@ -6,3 +6,4 @@ pynetdicom
 tenacity
 apscheduler
 python-dotenv
+pillow

@@ -1,6 +1,7 @@
 """
 FastAPI application for managing DICOM JPEG ZIP exports.
 """
+
 import re
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -8,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from config import DELETE_TEMP_JPEGS, PRECACHE_INTERVAL_MINUTES
 from logger import logger
-from utils.jpeg_to_zip import get_zip_path_for_study, export_study_jpeg_logic, background_export_zip
+from utils.jpeg_to_zip import (
+    get_zip_path_for_study,
+    export_study_jpeg_logic,
+    background_export_zip,
+)
 from utils.cache_cleanup import cleanup_old_cache_files
 from utils.precache import precache_studies_by_date, precache_todays_studies
 
@@ -20,7 +25,7 @@ tags_metadata = [
     {
         "name": "Maintenance",
         "description": "APIs for managing pre-cache, cache cleanup etc",
-    }
+    },
 ]
 
 app = FastAPI(title="DICOM JPEG ZIP Proxy", openapi_tags=tags_metadata)
@@ -31,6 +36,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/check/{study_uid}", tags=["Production"])
 def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
@@ -44,8 +50,8 @@ def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
 
         if zip_path.exists():
             return {
-                "status" : "success",
-                "msg" : "ZIP file is ready for download",
+                "status": "success",
+                "msg": "ZIP file is ready for download",
             }
 
         # If ZIP does not exist, trigger export in the background
@@ -59,7 +65,9 @@ def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
 
     except Exception as e:
         logger.error("Check/export enqueue failed for %s: %s", study_uid, e)
-        raise HTTPException(status_code=500, detail="Check/export enqueue failed") from e
+        raise HTTPException(
+            status_code=500, detail="Check/export enqueue failed"
+        ) from e
 
 
 @app.get("/export/{study_uid}", tags=["Production"])
@@ -70,7 +78,9 @@ def export_study_jpeg(study_uid: str):
     try:
         study_uid = str(study_uid).strip()
         zip_path = export_study_jpeg_logic(study_uid)
-        return FileResponse(path=zip_path, filename=zip_path.name, media_type="application/zip")
+        return FileResponse(
+            path=zip_path, filename=zip_path.name, media_type="application/zip"
+        )
     except Exception as e:
         logger.error("Export failed for %s: %s", study_uid, e)
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -95,7 +105,9 @@ def trigger_precache_by_date(date_str: str, background_tasks: BackgroundTasks):
     Trigger precache for studies on a specific date in YYYYMMDD format.
     """
     if not re.fullmatch(r"^\d{8}$", date_str):
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYYMMDD.")
+        raise HTTPException(
+            status_code=400, detail="Invalid date format. Use YYYYMMDD."
+        )
 
     background_tasks.add_task(precache_studies_by_date, date_str)
     return {"status": "Precache job scheduled in the background", "date": date_str}
@@ -112,8 +124,12 @@ def trigger_precache_today(background_tasks: BackgroundTasks):
 
 # Schedule periodic jobs
 scheduler = BackgroundScheduler()
-scheduler.add_job(precache_todays_studies, trigger='cron', minute=PRECACHE_INTERVAL_MINUTES)
-scheduler.add_job(cleanup_old_cache_files, trigger='cron', hour=2, minute=0)
+"""
+scheduler.add_job(
+    precache_todays_studies, trigger="cron", minute=PRECACHE_INTERVAL_MINUTES
+)
+"""
+scheduler.add_job(cleanup_old_cache_files, trigger="cron", hour=2, minute=0)
 scheduler.start()
 
 if DELETE_TEMP_JPEGS:

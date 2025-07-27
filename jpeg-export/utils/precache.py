@@ -1,6 +1,8 @@
 """
 Module with logic to precache zip files.
 """
+
+# pylint: disable=no-name-in-module
 from datetime import datetime
 from pydicom.dataset import Dataset
 from pynetdicom import AE
@@ -9,6 +11,7 @@ from config import PACS_CONFIG
 from utils.dcm4chee_proxy import get_study_series_and_instances
 from utils.jpeg_to_zip import create_study_jpeg_zip
 from logger import logger
+
 
 def precache_studies_by_date(date_str: str):
     """
@@ -30,7 +33,7 @@ def precache_studies_by_date(date_str: str):
         assoc = ae.associate(
             PACS_CONFIG["HOST"],
             PACS_CONFIG["PORT"],
-            ae_title=PACS_CONFIG["CALLING_AETITLE"]
+            ae_title=PACS_CONFIG["CALLING_AETITLE"],
         )
 
         if not assoc.is_established:

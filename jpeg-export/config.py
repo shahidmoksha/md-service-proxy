@@ -1,6 +1,7 @@
 """
 Configuration settings for the JPEG export service.
 """
+
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -45,3 +46,6 @@ DELETE_TEMP_JPEGS = os.getenv("DELETE_TEMP_JPEGS", "true").lower() == "true"
 
 # Precache settings
 PRECACHE_INTERVAL_MINUTES = int(os.getenv("PRECACHE_INTERVAL_MINUTES", "5"))
+
+# Annotation settings
+ANNOTATION_COLOR = os.getenv("ANNOTATION_COLOR", "gold")

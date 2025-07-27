@@ -1,6 +1,7 @@
 """
 Module with logic to set up logging for the JPEG export service.
 """
+
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
@@ -10,11 +11,15 @@ LOG_PATH = os.path.join(LOG_DIR, "jpeg_export.log")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+formatter = logging.Formatter(
+    "[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
 
-file_handler = TimedRotatingFileHandler(LOG_PATH, when="midnight", interval=1, backupCount=7)
+file_handler = TimedRotatingFileHandler(
+    LOG_PATH, when="midnight", interval=1, backupCount=7
+)
 file_handler.setFormatter(formatter)
 file_handler.suffix = "%Y-%m-%d"
 logger.addHandler(file_handler)

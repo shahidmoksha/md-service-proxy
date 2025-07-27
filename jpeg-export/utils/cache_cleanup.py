@@ -1,12 +1,14 @@
 """
 Module with logic to clean up old cache files.
 """
+
 import re
 from datetime import datetime
 from config import CACHE_DIR, CACHE_EXPIRY
 from logger import logger
 
-STUDY_DATE_PATTERN = re.compile(r'^(\d{8})_(.+)\.zip$')
+STUDY_DATE_PATTERN = re.compile(r"^(\d{8})_(.+)\.zip$")
+
 
 def cleanup_old_cache_files():
     """
