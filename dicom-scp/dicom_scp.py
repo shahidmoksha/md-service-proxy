@@ -41,8 +41,10 @@ forward_queue = Queue()
 stop_event = threading.Event()
 
 
-# Worker function to forward DICOM files
 def forward_worker(worker_id):
+    """
+    Worker function to forward DICOM files
+    """
     while not stop_event.is_set():
         try:
             file_path, calling_aet = forward_queue.get(timeout=2)
@@ -64,10 +66,12 @@ def forward_worker(worker_id):
             logging.exception("[Worker %s] Unexpected error: %s", worker_id, e)
 
 
-# Function to forward DICOM file to target AE
 def forward_to_target(file_path, calling_aet):
+    """
+    Function to forward DICOM file to target AE
+    """
     for attempt in range(MAX_RETRIES):
-        tae = AE(ae_title=calling_aet) # Set custom Calling AET
+        tae = AE(ae_title=calling_aet)  # Set custom Calling AET
         tae.requested_contexts = StoragePresentationContexts
         assoc = tae.associate(TARGET_HOST, TARGET_PORT, ae_title=TARGET_AE)
         if assoc.is_established:
@@ -87,8 +91,10 @@ def forward_to_target(file_path, calling_aet):
     return False
 
 
-# C-STORE Handler
 def handle_store(event):
+    """
+    C-STORE handler
+    """
     try:
         ds = event.dataset
         ds.file_meta = event.file_meta
@@ -103,15 +109,16 @@ def handle_store(event):
         return 0x0000
     except Exception:
         logging.exception("C-STORE failure, quarantining file")
-        bad_path = (
-            Path("quarantine") / f"bad_{ds.SOPInstanceUID}.dcm"
-        )
+        bad_path = Path("quarantine") / f"bad_{ds.SOPInstanceUID}.dcm"
         with open(bad_path, "wb") as f:
             f.write(event.request.DataSet)
         return 0xC210
 
-# Queue monitor
+
 def queue_monitor():
+    """
+    Queue monitor
+    """
     idle_queue_check = 0
     while not stop_event.is_set():
         if forward_queue.qsize() == 0:
@@ -121,20 +128,24 @@ def queue_monitor():
             idle_queue_check = 0
         sleep(10)
 
-# Gracefule shutdown
+
 def shutdown_handler(signum, frame):
+    """
+    Graceful shutdown handler
+    """
     logging.info("Shudown signal received. Waiting for queue to drain...")
     stop_event.set()
     forward_queue.join()
     logging.info("All queued items processed. Shutting down.")
     os._exit(0)
 
+
 signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 # Start background workers
 for i in range(NUM_WORKERS):
-    t = threading.Thread(target=forward_worker, args=(i+1,), daemon=True)
+    t = threading.Thread(target=forward_worker, args=(i + 1,), daemon=True)
     t.start()
 
 # Start monitor thread
