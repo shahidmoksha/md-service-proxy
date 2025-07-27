@@ -32,7 +32,11 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
         font = ImageFont.truetype("arial.ttf", font_size)
     except Exception as e:
         logger.warning("Arial font not found! %s", e)
-        font = ImageFont.load_default()
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+        except Exception as ex:
+            logger.warning("DejaVuSans font not found! %s", ex)
+            font = ImageFont.load_default()
 
     # Text color and shadow
     text_color = ANNOTATION_COLOR
