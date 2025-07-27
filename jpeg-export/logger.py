@@ -11,7 +11,7 @@ LOG_PATH = os.path.join(LOG_DIR, "jpeg_export.log")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter(
     "[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"

@@ -8,7 +8,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from pydicom.valuerep import PersonName
 from logger import logger
-from config import ANNOTATION_COLOR
+from config import ANNOTATION_COLOR, ANNOTATION_SHADOW_COLOR, ANNOTATION_SHADOW_OFFSET
 
 
 def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = None):
@@ -34,6 +34,13 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
         logger.warning("Arial font not found! %s", e)
         font = ImageFont.load_default()
 
+    # Text color and shadow
+    text_color = ANNOTATION_COLOR
+    shadow_color = ANNOTATION_SHADOW_COLOR
+    shadow_offset = (
+        ANNOTATION_SHADOW_OFFSET if font_size > 20 else (1 if font_size > 9 else 0)
+    )
+
     # Top-left
     tl_lines = [
         f"Name: {format_person_name(metadata.get('PatientName', ''))}",
@@ -42,7 +49,14 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
     ]
     y_tl = padding
     for line in tl_lines:
-        draw.text((padding, y_tl), line, fill=ANNOTATION_COLOR, font=font)
+        if shadow_offset > 0:
+            draw.text(
+                (padding + shadow_offset, y_tl + shadow_offset),
+                line,
+                fill=shadow_color,
+                font=font,
+            )
+        draw.text((padding, y_tl), line, fill=text_color, font=font)
         y_tl += line_spacing
 
     # Top-right
@@ -53,8 +67,15 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
     y_tr = padding
     for line in tr_lines:
         text_width = draw.textlength(line, font=font)
+        if shadow_offset > 0:
+            draw.text(
+                (width - text_width - padding + shadow_offset, y_tr + shadow_offset),
+                line,
+                fill=shadow_color,
+                font=font,
+            )
         draw.text(
-            (width - text_width - padding, y_tr), line, fill=ANNOTATION_COLOR, font=font
+            (width - text_width - padding, y_tr), line, fill=text_color, font=font
         )
         y_tr += line_spacing
 
@@ -65,7 +86,14 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
     ]
     y_bl = height - (len(bl_lines) * line_spacing) - padding
     for line in bl_lines:
-        draw.text((padding, y_bl), line, fill=ANNOTATION_COLOR, font=font)
+        if shadow_offset > 0:
+            draw.text(
+                (padding + shadow_offset, y_bl + shadow_offset),
+                line,
+                fill=shadow_color,
+                font=font,
+            )
+        draw.text((padding, y_bl), line, fill=text_color, font=font)
         y_bl += line_spacing
 
     # Bottom-right
@@ -76,8 +104,15 @@ def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = N
     y_br = height - (len(br_lines) * line_spacing) - padding
     for line in br_lines:
         text_width = draw.textlength(line, font=font)
+        if shadow_offset > 0:
+            draw.text(
+                (width - text_width - padding + shadow_offset, y_br + shadow_offset),
+                line,
+                fill=shadow_color,
+                font=font,
+            )
         draw.text(
-            (width - text_width - padding, y_br), line, fill=ANNOTATION_COLOR, font=font
+            (width - text_width - padding, y_br), line, fill=text_color, font=font
         )
         y_br += line_spacing
 
