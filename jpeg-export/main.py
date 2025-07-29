@@ -16,6 +16,7 @@ from utils.jpeg_to_zip import (
 )
 from utils.cache_cleanup import cleanup_old_cache_files
 from utils.precache import precache_studies_by_date, precache_todays_studies
+from utils.dcm4chee_proxy import get_study_series_and_instances
 
 tags_metadata = [
     {
@@ -38,14 +39,37 @@ app.add_middleware(
 )
 
 
-@app.get("/check/{study_uid}", tags=["Production"])
-def check_or_export(study_uid: str, background_tasks: BackgroundTasks):
+@app.get("/check/{study_uid}/{instance_count}", tags=["Production"])
+def check_or_export(
+    study_uid: str, instance_count: int, background_tasks: BackgroundTasks
+):
     """
     Check if a ZIP file exists for the given study UID.
     If it exists, return success; otherwise, return failure and trigger export.
     """
     try:
         study_uid = str(study_uid).strip()
+        logger.info(
+            "Checking study %s against expected instance count: %d",
+            study_uid,
+            instance_count,
+        )
+
+        # Fetch actual instances from PACS
+        fetched_instances = get_study_series_and_instances(study_uid, False)
+        server_instance_count = len(fetched_instances)
+
+        if server_instance_count < instance_count:
+            logger.warning(
+                "Aborting export: Only %d instances found on PACS Server, but %d instances are required!",
+                server_instance_count,
+                instance_count,
+            )
+            return {
+                "status": "failure",
+                "msg": "Server instance count does not match the requested instance count.",
+            }
+
         zip_path = get_zip_path_for_study(study_uid)
 
         if zip_path.exists():

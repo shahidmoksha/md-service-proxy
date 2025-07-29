@@ -165,7 +165,9 @@ def fetch_jpeg_instance(study_uid: str, series_uid: str, sop_uid: str) -> Path:
     raise Exception(f"JPEG fetch failed after {MAX_RETRIES} attempts: {url}")
 
 
-def get_study_series_and_instances(study_uid: str) -> list[dict]:
+def get_study_series_and_instances(
+    study_uid: str, skip_invalid: bool = True
+) -> list[dict]:
     """
     Function to get all the series and instances information for the given study UID.
     Returns list of dicts with keys: series_uid, sop_uid.
@@ -194,45 +196,47 @@ def get_study_series_and_instances(study_uid: str) -> list[dict]:
     results = []
     responses = assoc.send_c_find(ds, StudyRootQueryRetrieveInformationModelFind)
     for status, identifier in responses:
-        # Skip instance if SOPInstanceUID is not present
-        sop_uid = getattr(identifier, "SOPInstanceUID", None)
-        if sop_uid is None:
-            logger.warning("Skipping Instance as SOPInstanceUID is missing.")
-            continue
+        # Skip unwanted instances, if needed
+        if skip_invalid:
+            # Skip instance if SOPInstanceUID is not present
+            sop_uid = getattr(identifier, "SOPInstanceUID", None)
+            if sop_uid is None:
+                logger.warning("Skipping Instance as SOPInstanceUID is missing.")
+                continue
 
-        # Skip instances with SR or PR modality types
-        modality = getattr(identifier, "Modality", "")
-        if modality in {"SR", "PR"}:
-            logger.warning("Skipping SR/PR instance Modality=%s", modality)
-            continue
+            # Skip instances with SR or PR modality types
+            modality = getattr(identifier, "Modality", "")
+            if modality in {"SR", "PR"}:
+                logger.warning("Skipping SR/PR instance Modality=%s", modality)
+                continue
 
-        # Skip instances which are 10-bit images
-        bits_stored = getattr(identifier, "BitsStored", None)
-        if bits_stored is None:
-            logger.warning("Skipping SOP %s: BitsStored not present", sop_uid)
-            continue
-        if bits_stored == 10:
-            logger.warning(
-                "Skipping SOP %s: 10-bit image not supported by WADO-JPEG", sop_uid
-            )
-            continue
+            # Skip instances which are 10-bit images
+            bits_stored = getattr(identifier, "BitsStored", None)
+            if bits_stored is None:
+                logger.warning("Skipping SOP %s: BitsStored not present", sop_uid)
+                continue
+            if bits_stored == 10:
+                logger.warning(
+                    "Skipping SOP %s: 10-bit image not supported by WADO-JPEG", sop_uid
+                )
+                continue
 
-        # Skip instances with no pixel data
-        rows = getattr(identifier, "Rows", None)
-        cols = getattr(identifier, "Columns", None)
-        if rows is None or cols is None:
-            logger.warning(
-                "Skipping SOP %s: Rows or Columns data not present.", sop_uid
-            )
-            continue
-        if rows == 0 or cols == 0:
-            logger.warning(
-                "Skipping SOP %s: No image data found (Rows=%d, Columns=%d)",
-                sop_uid,
-                rows,
-                cols,
-            )
-            continue
+            # Skip instances with no pixel data
+            rows = getattr(identifier, "Rows", None)
+            cols = getattr(identifier, "Columns", None)
+            if rows is None or cols is None:
+                logger.warning(
+                    "Skipping SOP %s: Rows or Columns data not present.", sop_uid
+                )
+                continue
+            if rows == 0 or cols == 0:
+                logger.warning(
+                    "Skipping SOP %s: No image data found (Rows=%d, Columns=%d)",
+                    sop_uid,
+                    rows,
+                    cols,
+                )
+                continue
 
         if (
             status
