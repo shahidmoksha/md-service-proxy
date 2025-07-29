@@ -14,6 +14,7 @@ from utils.dcm4chee_proxy import (
     get_instance_metadata,
 )
 from utils.image_utils import burn_metadata_on_jpeg
+from state import active_exports, active_exports_lock
 
 
 def get_zip_path_for_study(study_uid: str) -> Path:
@@ -31,35 +32,29 @@ def background_export_zip(study_uid: str):
     """
     try:
         logger.info("[Background Task] Starting export for study UID: %s", study_uid)
-        export_study_jpeg_logic(study_uid)
+        create_study_jpeg_zip(study_uid)
         logger.info("[Background Task] Completed export for study UID: %s", study_uid)
     except Exception as e:
         logger.error(
             "[Background Task] Export failed for study UID %s: %s", study_uid, e
         )
+    finally:
+        with active_exports_lock:
+            active_exports.discard(study_uid)
+            logger.debug("Export Lock released for %s", study_uid)
 
 
-def export_study_jpeg_logic(study_uid: str) -> Path:
+def create_study_jpeg_zip(study_uid: str) -> Path:
     """
-    Fetch instances for all series of a study.
-    Create the ZIP file.
-    Returns path to the ZIP file.
+    Fetch JPEGs via WADO for all SOPs and create a ZIP.
+    Each dict in series_instances must contain: series_uid, sop_uid
+    Returns path to the generated ZIP file.
     """
     study_uid = str(study_uid).strip()
     series_instances = get_study_series_and_instances(study_uid)
     if not series_instances:
         raise ValueError(f"No instances found for StudyUID: {study_uid}")
 
-    zip_path = create_study_jpeg_zip(study_uid, series_instances)
-    return zip_path
-
-
-def create_study_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
-    """
-    Fetch JPEGs via WADO for all SOPs and create a ZIP.
-    Each dict in series_instances must contain: series_uid, sop_uid
-    Returns path to the generated ZIP file.
-    """
     try:
         study_date = get_study_date(study_uid)
     except Exception as e:

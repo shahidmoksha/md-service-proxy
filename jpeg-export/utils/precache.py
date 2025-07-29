@@ -8,7 +8,6 @@ from pydicom.dataset import Dataset
 from pynetdicom import AE
 from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind
 from config import PACS_CONFIG
-from utils.dcm4chee_proxy import get_study_series_and_instances
 from utils.jpeg_to_zip import create_study_jpeg_zip
 from logger import logger
 
@@ -56,9 +55,7 @@ def precache_studies_by_date(date_str: str):
 
         for study_uid in study_uids:
             try:
-                series_instances = get_study_series_and_instances(study_uid)
-                if series_instances:
-                    create_study_jpeg_zip(study_uid, series_instances)
+                create_study_jpeg_zip(study_uid)
             except Exception as e:
                 logger.warning("Precache failed for %s: %s", study_uid, e)
 

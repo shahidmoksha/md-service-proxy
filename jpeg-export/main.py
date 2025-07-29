@@ -3,25 +3,21 @@ FastAPI application for managing DICOM JPEG ZIP exports.
 """
 
 import re
-from threading import Lock
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-from config import DELETE_TEMP_JPEGS, PRECACHE_INTERVAL_MINUTES
+from config import DELETE_TEMP_JPEGS
 from logger import logger
 from utils.jpeg_to_zip import (
     get_zip_path_for_study,
-    export_study_jpeg_logic,
     background_export_zip,
+    create_study_jpeg_zip,
 )
 from utils.cache_cleanup import cleanup_old_cache_files
 from utils.precache import precache_studies_by_date, precache_todays_studies
 from utils.dcm4chee_proxy import get_study_series_and_instances
-
-# Shared set of currently running study exports
-active_exports = set()
-active_exports_lock = Lock()
+from state import active_exports, active_exports_lock
 
 tags_metadata = [
     {
@@ -116,7 +112,7 @@ def export_study_jpeg(study_uid: str):
     """
     try:
         study_uid = str(study_uid).strip()
-        zip_path = export_study_jpeg_logic(study_uid)
+        zip_path = create_study_jpeg_zip(study_uid)
         return FileResponse(
             path=zip_path, filename=zip_path.name, media_type="application/zip"
         )
