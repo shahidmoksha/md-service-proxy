@@ -8,13 +8,21 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from pydicom.valuerep import PersonName
 from logger import logger
-from config import ANNOTATION_COLOR, ANNOTATION_SHADOW_COLOR, ANNOTATION_SHADOW_OFFSET
+from config import (
+    ANNOTATE_JPEG,
+    ANNOTATION_COLOR,
+    ANNOTATION_SHADOW_COLOR,
+    ANNOTATION_SHADOW_OFFSET,
+)
 
 
 def burn_metadata_on_jpeg(jpeg_path: Path, metadata: dict, output_path: Path = None):
     """
     Function to addd study metadata in the four corners of the given JPEG file
     """
+    if not ANNOTATE_JPEG:
+        return
+
     image = Image.open(jpeg_path).convert("RGB")
     draw = ImageDraw.Draw(image)
     width, height = image.size

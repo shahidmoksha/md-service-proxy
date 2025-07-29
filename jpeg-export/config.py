@@ -48,6 +48,7 @@ DELETE_TEMP_JPEGS = os.getenv("DELETE_TEMP_JPEGS", "true").lower() == "true"
 PRECACHE_INTERVAL_MINUTES = int(os.getenv("PRECACHE_INTERVAL_MINUTES", "5"))
 
 # Annotation settings
+ANNOTATE_JPEG = os.getenv("ANNOTATE_JPEG", "true").lower() == "true"
 ANNOTATION_COLOR = os.getenv("ANNOTATION_COLOR", "gold")
 ANNOTATION_SHADOW_COLOR = os.getenv("ANNOTATION_SHADOW_COLOR", "sienna")
 ANNOTATION_SHADOW_OFFSET = int(os.getenv("ANNOTATION_SHADOW_OFFSET", "2"))
