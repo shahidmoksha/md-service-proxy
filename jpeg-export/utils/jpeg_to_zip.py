@@ -51,9 +51,6 @@ def create_study_jpeg_zip(study_uid: str) -> Path:
     Returns path to the generated ZIP file.
     """
     study_uid = str(study_uid).strip()
-    series_instances = get_study_series_and_instances(study_uid)
-    if not series_instances:
-        raise ValueError(f"No instances found for StudyUID: {study_uid}")
 
     try:
         study_date = get_study_date(study_uid)
@@ -72,6 +69,10 @@ def create_study_jpeg_zip(study_uid: str) -> Path:
 
     study_temp_dir = TEMP_DIR / study_uid
     study_temp_dir.mkdir(parents=True, exist_ok=True)
+
+    series_instances = get_study_series_and_instances(study_uid)
+    if not series_instances:
+        raise ValueError(f"No instances found for StudyUID: {study_uid}")
 
     fetched_files = []
     for item in series_instances:
