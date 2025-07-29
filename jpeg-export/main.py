@@ -3,6 +3,7 @@ FastAPI application for managing DICOM JPEG ZIP exports.
 """
 
 import re
+from threading import Lock
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,10 @@ from utils.jpeg_to_zip import (
 from utils.cache_cleanup import cleanup_old_cache_files
 from utils.precache import precache_studies_by_date, precache_todays_studies
 from utils.dcm4chee_proxy import get_study_series_and_instances
+
+# Shared set of currently running study exports
+active_exports = set()
+active_exports_lock = Lock()
 
 tags_metadata = [
     {
@@ -49,43 +54,53 @@ def check_or_export(
     """
     try:
         study_uid = str(study_uid).strip()
-        logger.info(
-            "Checking study %s against expected instance count: %d",
-            study_uid,
-            instance_count,
-        )
-
-        # Fetch actual instances from PACS
-        fetched_instances = get_study_series_and_instances(study_uid, False)
-        server_instance_count = len(fetched_instances)
-
-        if server_instance_count < instance_count:
-            logger.warning(
-                "Aborting export: Only %d instances found on PACS Server, but %d instances are required!",
-                server_instance_count,
-                instance_count,
-            )
-            return {
-                "status": "failure",
-                "msg": "Server instance count does not match the requested instance count.",
-            }
-
         zip_path = get_zip_path_for_study(study_uid)
 
+        # If zip file exists return success
         if zip_path.exists():
             return {
                 "status": "success",
                 "msg": "ZIP file is ready for download",
             }
 
-        # If ZIP does not exist, trigger export in the background
-        background_tasks.add_task(background_export_zip, study_uid)
-        logger.info("Queued background export for study UID: %s", study_uid)
+        # Check and add task for export
+        with active_exports_lock:
+            # Check if export is already triggerd for this study_uid
+            if study_uid in active_exports:
+                return {
+                    "status": "failure",
+                    "msg": "JPEG Export already running in background.",
+                }
 
-        return {
-            "status": "failure",
-            "msg": "ZIP file not found, export job scheduled in the background",
-        }
+            # If not already triggered, fetch actual instances from PACS
+            logger.info(
+                "Checking study %s against expected instance count: %d",
+                study_uid,
+                instance_count,
+            )
+
+            fetched_instances = get_study_series_and_instances(study_uid, False)
+            server_instance_count = len(fetched_instances)
+            if server_instance_count < instance_count:
+                logger.warning(
+                    "Aborting export: Only %d instances found on PACS Server, but %d instances are required!",
+                    server_instance_count,
+                    instance_count,
+                )
+                return {
+                    "status": "failure",
+                    "msg": "Server instance count does not match the requested instance count.",
+                }
+
+            # Mark export as running
+            active_exports.add(study_uid)
+            background_tasks.add_task(background_export_zip, study_uid)
+            logger.info("Queued background export for study UID: %s", study_uid)
+
+            return {
+                "status": "failure",
+                "msg": "ZIP file not found, export job scheduled in the background",
+            }
 
     except Exception as e:
         logger.error("Check/export enqueue failed for %s: %s", study_uid, e)

@@ -102,16 +102,15 @@ def create_study_jpeg_zip(study_uid: str, series_instances: list[dict]) -> Path:
                 zip_file.write(jpeg_file, arcname=jpeg_file.name)
 
         logger.info("Create ZIP file: %s with %d JPEGs", zip_path, len(fetched_files))
+        return zip_path
 
+    except Exception as e:
+        logger.error("Failed to create ZIP for study %s: %s", study_uid, e)
+        raise
+
+    finally:
         if DELETE_TEMP_JPEGS:
             shutil.rmtree(study_temp_dir, ignore_errors=False)
             logger.info("Deleted temporary JPEGs for %s", study_uid)
         else:
             logger.info("Temporary JPEGs retained for %s", study_uid)
-
-        return zip_path
-
-    except Exception as e:
-        logger.error("Failed to create ZIP for study %s: %s", study_uid, e)
-        logger.info("Retaining temp JPEGs at: %s", study_temp_dir)
-        raise
