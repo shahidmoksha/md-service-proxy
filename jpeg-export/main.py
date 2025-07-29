@@ -49,8 +49,8 @@ def check_or_export(
     If it exists, return success; otherwise, return failure and trigger export.
     """
     try:
-        study_uid = str(study_uid).strip()
-        zip_path = get_zip_path_for_study(study_uid)
+        clean_study_uid = str(study_uid).strip()
+        zip_path = get_zip_path_for_study(clean_study_uid)
 
         # If zip file exists return success
         if zip_path.exists():
@@ -62,7 +62,7 @@ def check_or_export(
         # Check and add task for export
         with active_exports_lock:
             # Check if export is already triggerd for this study_uid
-            if study_uid in active_exports:
+            if clean_study_uid in active_exports:
                 return {
                     "status": "failure",
                     "msg": "JPEG Export already running in background.",
@@ -75,7 +75,7 @@ def check_or_export(
                 instance_count,
             )
 
-            fetched_instances = get_study_series_and_instances(study_uid, False)
+            fetched_instances = get_study_series_and_instances(clean_study_uid, False)
             server_instance_count = len(fetched_instances)
             if server_instance_count < instance_count:
                 logger.warning(
@@ -89,9 +89,9 @@ def check_or_export(
                 }
 
             # Mark export as running
-            active_exports.add(study_uid)
-            background_tasks.add_task(background_export_zip, study_uid)
-            logger.info("Queued background export for study UID: %s", study_uid)
+            active_exports.add(clean_study_uid)
+            background_tasks.add_task(background_export_zip, clean_study_uid)
+            logger.info("Queued background export for study UID: %s", clean_study_uid)
 
             return {
                 "status": "failure",
@@ -111,13 +111,13 @@ def export_study_jpeg(study_uid: str):
     Export JPEGs for the given study UID and return the ZIP file.
     """
     try:
-        study_uid = str(study_uid).strip()
-        zip_path = create_study_jpeg_zip(study_uid)
+        clean_study_uid = str(study_uid).strip()
+        zip_path = create_study_jpeg_zip(clean_study_uid)
         return FileResponse(
             path=zip_path, filename=zip_path.name, media_type="application/zip"
         )
     except Exception as e:
-        logger.error("Export failed for %s: %s", study_uid, e)
+        logger.error("Export failed for %s: %s", clean_study_uid, e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
