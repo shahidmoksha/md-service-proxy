@@ -3,11 +3,15 @@ FastAPI application for managing DICOM JPEG ZIP exports.
 """
 
 import re
+import shutil
+import signal
+import sys
+from contextlib import asynccontextmanager
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-from config import DELETE_TEMP_JPEGS
+from config import DELETE_TEMP_JPEGS, TEMP_DIR
 from logger import logger
 from utils.jpeg_to_zip import (
     get_zip_path_for_study,
@@ -19,6 +23,76 @@ from utils.precache import precache_studies_by_date, precache_todays_studies
 from utils.dcm4chee_proxy import get_study_series_and_instances
 from state import active_exports, active_exports_lock
 
+# Initialize background scheduler
+scheduler = BackgroundScheduler()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context
+    """
+    # StartUp logic
+    logger.info("Starting JPEG Export Service")
+
+    if DELETE_TEMP_JPEGS:
+        logger.info("Temporary JPEG deletion is enabled")
+
+        # Clean temp directory at startup
+        try:
+            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+            TEMP_DIR.mkdir(parents=True, exist_ok=True)
+            logger.info("Temp directory cleaned on startup!")
+        except Exception as e:
+            logger.warning("Temp directory cleanup failed: %s", e)
+    else:
+        logger.info("Temporary JPEG deletion is disabled")
+
+    # Start background scheduler
+    if not scheduler.running:
+        scheduler.start()
+
+    # Hook signals for manual shutdown handling
+    signal.signal(signal.SIGTERM, handle_shutdown_signal)
+    signal.signal(signal.SIGINT, handle_shutdown_signal)
+
+    yield
+
+    # Shutdown logic
+    logger.info("Shutting down gracefully...")
+    try:
+        if scheduler.running:
+            scheduler.shutdown(wait=False)
+            logger.info("Scheduler stopped.")
+    except Exception as e:
+        logger.warning("Scheduler shutdown error: %s", e)
+
+    if DELETE_TEMP_JPEGS:
+        try:
+            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+            logger.info("Temp directory cleaned on shutdown")
+        except Exception as e:
+            logger.warning("Temp directory removal failed: %s", e)
+
+
+def handle_shutdown_signal(signum, frame):
+    """
+    Function to handle service shutdown signals
+    """
+    logger.info("Signal %d received. Triggering cleanup...", signum)
+    scheduler.shutdown(wait=False)
+    sys.exit(0)
+
+
+def on_exit():
+    """
+    Function to handle cleanup if graceful shutdown is skipped
+    """
+    logger.info("Exiting via atexit fallback")
+    scheduler.shutdown(wait=False)
+
+
+# OpenAPI tags
 tags_metadata = [
     {
         "name": "Production",
@@ -30,7 +104,10 @@ tags_metadata = [
     },
 ]
 
-app = FastAPI(title="DICOM JPEG ZIP Proxy", openapi_tags=tags_metadata)
+# Initialize FastAPI with lifespan and OpenAPI tags
+app = FastAPI(
+    lifespan=lifespan, title="DICOM JPEG ZIP Proxy", openapi_tags=tags_metadata
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -155,19 +232,3 @@ def trigger_precache_today(background_tasks: BackgroundTasks):
     """
     background_tasks.add_task(precache_todays_studies)
     return {"status": "Precache job for Today scheduled in the background"}
-
-
-# Schedule periodic jobs
-scheduler = BackgroundScheduler()
-"""
-scheduler.add_job(
-    precache_todays_studies, trigger="cron", minute=PRECACHE_INTERVAL_MINUTES
-)
-"""
-scheduler.add_job(cleanup_old_cache_files, trigger="cron", hour=2, minute=0)
-scheduler.start()
-
-if DELETE_TEMP_JPEGS:
-    logger.info("Temporary JPEG deletion is enabled")
-else:
-    logger.info("Temporary JPEG deletion is disabled")
