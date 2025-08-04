@@ -95,7 +95,8 @@ def create_study_jpeg_zip(study_uid: str) -> Path:
     try:
         with zipfile.ZipFile(zip_path, "w") as zip_file:
             for jpeg_file in fetched_files:
-                zip_file.write(jpeg_file, arcname=jpeg_file.name)
+                relative_path = jpeg_file.relative_to(study_temp_dir)
+                zip_file.write(jpeg_file, arcname=relative_path)
 
         logger.info("Create ZIP file: %s with %d JPEGs", zip_path, len(fetched_files))
         return zip_path

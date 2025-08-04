@@ -121,7 +121,7 @@ def fetch_jpeg_instance(study_uid: str, series_uid: str, sop_uid: str) -> Path:
     Fetch a JPEG image for the given study, series, and SOP instance UID.
     Returns the file path the JPEG image.
     """
-    jpeg_path = TEMP_DIR / study_uid / f"{sop_uid}.jpeg"
+    jpeg_path = TEMP_DIR / study_uid / series_uid / f"{sop_uid}.jpeg"
     jpeg_path.parent.mkdir(parents=True, exist_ok=True)
 
     if jpeg_path.exists():
@@ -151,10 +151,9 @@ def fetch_jpeg_instance(study_uid: str, series_uid: str, sop_uid: str) -> Path:
                     f.write(response.content)
                 logger.info("Fetched JPEG for SOP: %s", sop_uid)
                 return jpeg_path
-            else:
-                logger.warning(
-                    "JPEG fetch failed (%s) for %s", response.status_code, sop_uid
-                )
+            logger.warning(
+                "JPEG fetch failed (%s) for %s", response.status_code, sop_uid
+            )
         except Exception as e:
             logger.warning(
                 "Attempt %d failed to fetch JPEG for %s: %s", attempt, sop_uid, e
