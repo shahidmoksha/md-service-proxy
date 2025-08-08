@@ -209,6 +209,7 @@ def get_study_series_and_instances(
                 logger.warning("Skipping SR/PR instance Modality=%s", modality)
                 continue
 
+            """
             # Skip instances which are 10-bit images
             bits_stored = getattr(identifier, "BitsStored", None)
             if bits_stored is None:
@@ -219,6 +220,7 @@ def get_study_series_and_instances(
                     "Skipping SOP %s: 10-bit image not supported by WADO-JPEG", sop_uid
                 )
                 continue
+            """
 
             # Skip instances with no pixel data
             rows = getattr(identifier, "Rows", None)
